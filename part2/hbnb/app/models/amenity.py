@@ -12,7 +12,12 @@ class Amenity(BaseModel):
     Attributes:
         name (str): The name of the amenity
     """
+    name = ""
+
     def __init__(self, *args, **kwargs):
         #Initializes a new Amenity
-        super().__init__(*args, **kwargs)
-        self.name = ""
+        super().__init__()
+        if kwargs:
+            for key, value in kwargs.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)

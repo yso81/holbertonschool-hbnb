@@ -16,11 +16,16 @@ class Review(BaseModel):
         place (Place): The Place object being reviewed
         user (User): The User object who wrote the review
     """
+    place_id = ""
+    user_id = ""
+    text = ""
+    place = None
+    user = None
+
     def __init__(self, *args, **kwargs):
         #Initializes a new Review
-        super().__init__(*args, **kwargs)
-        self.place_id = ""
-        self.user_id = ""
-        self.text = ""
-        self.place = None
-        self.user = None
+        super().__init__()
+        if kwargs:
+            for key, value in kwargs.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
