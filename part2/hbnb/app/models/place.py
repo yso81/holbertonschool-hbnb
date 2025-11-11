@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 """
-Module for the Place class.
+Module for the Place class
 """
-from models.base_model import BaseModel
+from .base_model import BaseModel
 
 
 class Place(BaseModel):
@@ -24,8 +24,9 @@ class Place(BaseModel):
         reviews (list): A list of Review instances for the place.
         amenities (list): A list of Amenity instances for the place.
     """
+    
     def __init__(self, *args, **kwargs):
-        """Initializes a new Place."""
+        #Initializes a new Place
         super().__init__(*args, **kwargs)
         self.city_id = ""
         self.user_id = ""
@@ -42,11 +43,11 @@ class Place(BaseModel):
         self.amenities = []
 
     def add_review(self, review):
-        """Add a review to the place."""
+        #Add a review to the place
         if review not in self.reviews:
             self.reviews.append(review)
 
     def add_amenity(self, amenity):
-        """Add an amenity to the place."""
+        #Add an amenity to the place
         if amenity not in self.amenities:
             self.amenities.append(amenity)
