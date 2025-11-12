@@ -2,7 +2,7 @@
 
 The project setup will comprise of the **Presentation**(API Endpoints, Services, Request Handlers), **Business Logic**(User Model, Place Model, Review Model, Amenity Model), and **Persistence**(Database Access, Repository) layers with the necessary folders, packages, and files.
 
-
+```
 hbnb/
 ├── app/
 │   ├── __init__.py
@@ -30,6 +30,7 @@ hbnb/
 ├── config.py
 ├── requirements.txt
 ├── README.md
+```
 
 Explanation:
 
