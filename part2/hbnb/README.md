@@ -1,3 +1,5 @@
+# Part 2: Implementation of Business Logic and API Endpoints #
+
 ## Project directory structure ##
 
 The project setup will comprise of the **Presentation**(API Endpoints, Services, Request Handlers), **Business Logic**(User Model, Place Model, Review Model, Amenity Model), and **Persistence**(Database Access, Repository) layers with the necessary folders, packages, and files.

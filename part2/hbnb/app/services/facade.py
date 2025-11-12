@@ -31,3 +31,19 @@ class HBnBFacade:
         if place:
             place.reviews = self.review_repository.get_by_attribute('place_id', place_id)
         return place
+    
+
+    def __init__(self):
+        self.user_repo = InMemoryRepository()
+
+    def create_user(self, user_data):
+        user = User(**user_data)
+        self.user_repo.add(user)
+        return user
+
+    def get_user(self, user_id):
+        return self.user_repo.get(user_id)
+
+    def get_user_by_email(self, email):
+        return self.user_repo.get_by_attribute('email', email)
+
