@@ -54,7 +54,7 @@ In the requirements.txt file, the Python packages needed for the project:
 flask
 flask-restx
 ```
-Install the dependencies using
+Install the dependencies using:
 ```
 pip install -r requirements.txt
 ```
