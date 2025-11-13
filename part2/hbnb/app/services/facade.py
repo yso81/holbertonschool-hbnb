@@ -41,6 +41,12 @@ class HBnBFacade:
         """
         return self.user_repo.get(user_id)
 
+    def get_all_users(self):
+        """
+        Retrieves all users from the repository.
+        """
+        return self.user_repo.get_all()
+        
     def get_user_by_email(self, email):
         """
         retrieves a user by their email address
@@ -50,10 +56,41 @@ class HBnBFacade:
             return users[0]
         return None
 
+    def update_user(self, user_id, data):
+        """
+        Updates an existing user's information.
 
-    # Placeholder method for fetching a place by ID
-    #def get_place(self, place_id):
-    #    place = self.place_repo.get(place_id)
-    #    if place:
-    #        place.reviews = self.review_repository.get_by_attribute('place_id', place_id)
-    #    return place
+        Args:
+            user_id (str): The ID of the user to update.
+            data (dict): A dictionary containing the new data for the user.
+
+        Returns:
+            User: The updated user object, or None if the user was not found.
+        """
+        user_to_update = self.get_user(user_id)
+
+        if not user_to_update:
+            return None
+
+        for key, value in data.items():
+            setattr(user_to_update, key, value)
+
+        repo.save(user_to_update)
+
+        return user_to_update
+
+    def create_amenity(self, amenity_data):
+    # Placeholder for logic to create an amenity
+    pass
+
+    def get_amenity(self, amenity_id):
+    # Placeholder for logic to retrieve an amenity by ID
+    pass
+
+    def get_all_amenities(self):
+    # Placeholder for logic to retrieve all amenities
+    pass
+
+    def update_amenity(self, amenity_id, amenity_data):
+    # Placeholder for logic to update an amenity
+    pass

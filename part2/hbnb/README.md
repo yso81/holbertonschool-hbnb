@@ -70,7 +70,7 @@ Install the dependencies using:
 ```
 pip install -r requirements.txt
 ```
-Run the application using:
+Activate the `venv` module (use: `source venv/bin/activate`) before running the application in a new terminal window using:
 ```
 python run.py
 ```
@@ -112,4 +112,14 @@ The API endpoints needed for managing users in the HBnB application. The impleme
 
 - The GET endpoint retrieves user details by ID.
 - If the user does not exist, the API returns a 404 status code with an error message.
+
+### `Update a User (PUT /api/v1/users/<user_id>)` : Updates user details ###
+
+**Explanation:**
+
+- Users may update their own profiles on the application, changing details such as their name, email, or preferences.
+
+**3. Amenity Endpoints**
+## Implement the Amenity Endpoints ##
+The endpoints handle CRUD operations (Create, Read, Update) for amenities, while ensuring integration with the Business Logic layer via the Facade pattern.
 
