@@ -5,10 +5,14 @@ and repositories required by the application
 """
 from app.persistence.repository import InMemoryRepository
 from app.models.user import User
+from app.models.amenity import Amenity
+from app.models.place import Place
+from app.models.review import Review
 from app.services.user_service import UserService
 from app.services.place_service import PlaceService
 from app.services.review_service import ReviewService
 from app.services.amenity_service import AmenityService
+from uuid import UUID
 
 
 class HBnBFacade:
@@ -80,17 +84,60 @@ class HBnBFacade:
         return user_to_update
 
     def create_amenity(self, amenity_data):
-    # Placeholder for logic to create an amenity
-    pass
+        """
+        Create a new amenity.
+
+        :param amenity_data: A dictionary with 'name' of the amenity
+        :return: The newly created Amenity object
+        :raises ValueError: If the name is missing or invalid
+        """
+        name = amenity_data.get("name")
+        if not name or not name.strip():
+            raise ValueError("Name is required")
+
+        new_amenity = Amenity(name=name.strip())
+        self.amenity_repo.save(new_amenity)
+        return new_amenity
 
     def get_amenity(self, amenity_id):
-    # Placeholder for logic to retrieve an amenity by ID
-    pass
+        """
+        Get an amenity by its ID.
+
+        :param amenity_id: The unique ID of the amenity
+        :return: The Amenity object or None if not found
+        """
+        try:
+            UUID(amenity_id)  # Check if ID is valid
+        except ValueError:
+            return None  # If the ID is not valid
+
+        return self.amenity_repo.get(amenity_id)
 
     def get_all_amenities(self):
-    # Placeholder for logic to retrieve all amenities
-    pass
+        """
+        Get all amenities.
+
+        :return: A list of all Amenity objects
+        """
+        return self.amenity_repo.get_all()
 
     def update_amenity(self, amenity_id, amenity_data):
-    # Placeholder for logic to update an amenity
-    pass
+        """
+        Update an amenity by ID.
+
+        :param amenity_id: The ID of the amenity
+        :param amenity_data: A dictionary with the new 'name'
+        :return: The updated Amenity object, or None if not found
+        :raises ValueError: If the name is invalid
+        """
+        amenity = self.get_amenity(amenity_id)
+        if not amenity:
+            return None  # Amenity not found
+
+        name = amenity_data.get("name")
+        if not name or not name.strip():
+            raise ValueError("Name is required")
+
+        amenity.name = name.strip()
+        self.amenity_repo.save(amenity)
+        return amenity
