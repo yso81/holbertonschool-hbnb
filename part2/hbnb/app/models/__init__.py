@@ -3,7 +3,7 @@
 Initializes the models package.
 
 This file makes the models directory a Python package and imports all the
-model classes to make them easily accessible from other modules.
+model classes to make them easily accessible from other modules
 """
 from .base_model import BaseModel
 from .user import User

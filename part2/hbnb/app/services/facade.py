@@ -82,6 +82,22 @@ class HBnBFacade:
         self.user_repo.save(user_to_update)
 
         return user_to_update
+    
+    def find_users_by_name(self, first_name):
+        """
+        Finds all users with a given first name.
+        This method searches for users where the 'first_name' attribute matches.
+        
+        Args:
+            first_name (str): The first name to search for.
+
+        Returns:
+            list: A list of user objects that match the first name.
+                  Returns an empty list if no users are found.
+        """
+        matching_users = self.user_repo.get_by_attribute('first_name', first_name)
+        
+        return matching_users
 
     def create_amenity(self, amenity_data):
         """
@@ -141,3 +157,138 @@ class HBnBFacade:
         amenity.name = name.strip()
         self.amenity_repo.save(amenity)
         return amenity
+
+    def create_place(self, place_data):
+        """
+        Creates a new place after validating related entities and data.
+        """
+        if not self.user_repo.get(place_data['user_id']):
+            raise ValueError(f"Owner with ID '{place_data['user_id']}' not found.")
+    
+        if 'amenity_ids' in place_data:
+            for amenity_id in place_data['amenity_ids']:
+                if not self.amenity_repo.get(amenity_id):
+                    raise ValueError(f"Amenity with ID '{amenity_id}' not found.")
+    
+        if not (0 <= float(place_data['price'])):
+            raise ValueError("Price must be a non-negative number.")
+        if not (-90 <= float(place_data['latitude']) <= 90):
+            raise ValueError("Latitude must be between -90 and 90.")
+        if not (-180 <= float(place_data['longitude']) <= 180):
+            raise ValueError("Longitude must be between -180 and 180.")
+
+        new_place = Place(**place_data)
+        self.place_repo.add(new_user)
+        return new_place
+
+    def get_place(self, place_id):
+        """Retrieves a single place by its ID."""
+        return self.place_repo.get(place_id)
+    
+    def get_all_places(self):
+        """Retrieves all places from the repository."""
+        return self.place_repo.get_all()
+
+    def update_place(self, place_id, update_data):
+        """
+        Updates an existing place's information.
+        """
+        place_to_update = self.get_place(place_id)
+        if not place_to_update:
+            return None
+
+        if 'price' in update_data and not (0 <= float(update_data['price'])):
+            raise ValueError("Price must be a non-negative number.")
+        
+        for key, value in update_data.items():
+            setattr(place_to_update, key, value)
+        
+        place_to_update.updated_at = datetime.now()
+
+        self.place_repo.save(place_to_update)
+        return place_to_update
+
+    def create_review(self, review_data):
+        """
+        Creates a new review after validating entities
+        
+        Args:
+            review_data (dict): Data for the new review. Must include
+            'user_id', 'place_id', 'rating', and 'comment'
+        
+        Returns:
+            Review: The newly created review object
+        
+        Raises:
+            ValueError: If user or place is not found, or rating is invalid
+        """
+        if not self.user_repo.get(review_data['user_id']):
+            raise ValueError(f"User with ID '{review_data['user_id']}' not found.")
+        if not self.place_repo.get(review_data['place_id']):
+            raise ValueError(f"Place with ID '{review_data['place_id']}' not found.")
+        
+        rating = review_data.get('rating')
+        if not (1 <= int(rating) <= 5):
+            raise ValueError("Rating must be an integer between 1 and 5.")
+
+        new_review = Review(**review_data)
+        self.review_repo.add(new_review)
+        return new_review
+
+    def get_review(self, review_id):
+        """Retrieves a single review by its ID."""
+        return self.review_repo.get(review_id)
+    
+    def get_reviews_for_place(self, place_id):
+        """Retrieves all reviews for a specific place."""
+        if not self.place_repo.get(place_id):
+            raise ValueError(f"Place with ID '{place_id}' not found.")
+        return self.review_repo.get_by_attribute('place_id', place_id)
+
+    def update_review(self, review_id, update_data):
+        """
+        Updates an existing review
+        
+        Args:
+            review_id (str): The ID of the review to update
+            update_data (dict): A dictionary with the new 'rating' or 'comment'
+            
+        Returns:
+            Review: The updated review object, or None if not found
+        
+        Raises:
+            ValueError: If the rating is invalid
+        """
+        review_to_update = self.get_review(review_id)
+        if not review_to_update:
+            return None
+
+        if 'rating' in update_data:
+            rating = update_data['rating']
+            if not (1 <= int(rating) <= 5):
+                raise ValueError("Rating must be an integer between 1 and 5.")
+            review_to_update.rating = rating
+
+        if 'comment' in update_data:
+            review_to_update.comment = update_data['comment']
+        
+        review_to_update.updated_at = datetime.now()
+        self.review_repo.save(review_to_update)
+        return review_to_update
+
+    def delete_review(self, review_id):
+        """
+        Deletes a review by its ID.
+        
+        Args:
+            review_id (str): The ID of the review to delete.
+            
+        Returns:
+            bool: True if the deletion was successful, False otherwise.
+        """
+        review_to_delete = self.get_review(review_id)
+        if not review_to_delete:
+            return False
+            
+        self.review_repo.delete(review_id)
+        return True

@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 import sys
 import os
-from flask_restx import Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields, reqparse
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, project_root)
 from app.services import facade
@@ -20,15 +21,24 @@ user_details_model = api.inherit('UserDetails', user_input_model, {
     'id': fields.String(readonly=True, description='The user unique identifier')
 })
 
+parser = reqparse.RequestParser()
+parser.add_argument('first_name', type=str, help='Filter users by first name')
+
 @api.route('/')
 class UserList(Resource):
     @api.doc('list_users')
     @api.marshal_list_with(user_input_model)
     def get(self):
         """List all users"""
-        users = facade.get_all_users() 
-        return users
+        args = parser.parse_args()
+        first_name_filter = args.get('first_name')
 
+        if first_name_filter:
+            return facade.find_users_by_name(first_name_filter)
+        else:
+            return facade.get_all_users()
+
+    @api.doc('create_user')
     @api.expect(user_input_model, validate=True)
     @api.marshal_with(user_details_model, code=201)
     @api.response(201, 'User successfully created')
@@ -38,23 +48,16 @@ class UserList(Resource):
         """Register a new user"""
         user_data = api.payload
 
-        # Simulate email uniqueness check (to be replaced by real validation with persistence)
-        existing_user = facade.get_user_by_email(user_data['email'])
-        if existing_user:
-            return {'error': 'Email already registered'}, 400
+        if facade.get_user_by_email(user_data['email']):
+            api.abort(409, f"User with email '{user_data['email']}' already exists")
 
         new_user = facade.create_user(user_data)
-        return {
-            'id': new_user.id, 
-            'first_name': new_user.first_name, 
-            'last_name': new_user.last_name, 
-            'email': new_user.email
-            }, 201
-
+        return new_user, 201
 
 @api.route('/<user_id>')
 @api.param('user_id', 'The user identifier')
 class UserResource(Resource):
+    @api.doc('get_user_details')
     @api.marshal_with(user_details_model)
     @api.response(200, 'User details retrieved successfully')
     @api.response(404, 'User not found')
@@ -72,6 +75,7 @@ class UserResource(Resource):
             'email': user.email
             }, 200
 
+    @api.doc('update_user')
     @api.expect(user_input_model, validate=True)
     @api.marshal_with(user_details_model)
     @api.response(404, 'User not found')
