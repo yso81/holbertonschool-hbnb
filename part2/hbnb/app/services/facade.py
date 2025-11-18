@@ -37,19 +37,20 @@ class HBnBFacade:
         """
         user = User(**user_data)
         self.user_repo.add(user)
-        return user
+        return user.to_dict()
 
     def get_user(self, user_id):
         """
         Retrieves a user by their id
         """
-        return self.user_repo.get(user_id)
+        user = self.user_repo.get(user_id)
+        return user.to_dict() if user else None
 
     def get_all_users(self):
         """
         Retrieves all users from the repository.
         """
-        return self.user_repo.get_all()
+        return [user.to_dict() for user in self.user_repo.get_all()]
         
     def get_user_by_email(self, email):
         """
@@ -76,12 +77,17 @@ class HBnBFacade:
         if not user_to_update:
             return None
 
+        user_obj = self.user_repo.get(user_id)
+        if not user_obj:
+            return None
+
         for key, value in data.items():
-            setattr(user_to_update, key, value)
-
-        self.user_repo.save(user_to_update)
-
-        return user_to_update
+            if hasattr(user_obj, key):
+                setattr(user_obj, key, value)
+        
+        user_obj.save()
+        self.user_repo.save(user_obj)
+        return user_obj.to_dict()
     
     def find_users_by_name(self, first_name):
         """

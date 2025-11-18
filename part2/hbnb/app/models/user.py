@@ -24,5 +24,18 @@ class User(BaseModel):
 
         if kwargs:
             for key, value in kwargs.items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
+                setattr(self, key, value)
+
+    def to_dict(self):
+        """
+        Returns a dictionary representation of the User instance.
+        """
+        obj_dict = super().to_dict()
+
+        obj_dict.update({
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "email": self.email,
+            "is_admin": self.is_admin,
+        })
+        return obj_dict

@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 import sys
 import os
-from flask_restx import Namespace, Resource, fields, reqparse
+import re
+from flask_restx import Namespace, Resource, fields, reqparse, abort
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, project_root)
@@ -9,6 +10,8 @@ from app.services import facade
 
 
 api = Namespace('users', description='User operations')
+
+email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 # Define the user model for input validation and documentation
 user_input_model = api.model('User', {
@@ -39,7 +42,7 @@ class UserList(Resource):
             return facade.get_all_users()
 
     @api.doc('create_user')
-    @api.expect(user_input_model, validate=True)
+    @api.expect(user_input_model)
     @api.marshal_with(user_details_model, code=201)
     @api.response(201, 'User successfully created')
     @api.response(409, 'Email already registered')
@@ -48,11 +51,22 @@ class UserList(Resource):
         """Register a new user"""
         user_data = api.payload
 
+        email = user_data.get('email')
+        first_name = user_data.get('first_name')
+        last_name = user_data.get('last_name')
+
+        if not email:
+            return {"error": "Invalid input data"}, 400
+        if not email_regex.match(email):
+            return {"error": "Invalid input data"}, 400
+        if not first_name or not last_name:
+            return {"error": "Invalid input data"}, 400
+
         if facade.get_user_by_email(user_data['email']):
             api.abort(409, f"User with email '{user_data['email']}' already exists")
 
-        new_user = facade.create_user(user_data)
-        return new_user, 201
+        new_user_dict = facade.create_user(user_data)
+        return new_user_dict, 201
 
 @api.route('/<user_id>')
 @api.param('user_id', 'The user identifier')
@@ -65,18 +79,13 @@ class UserResource(Resource):
         """
         Get user details by ID
         """
-        user = facade.get_user(user_id)
-        if not user:
+        user_dict = facade.get_user(user_id)
+        if not user_dict:
             return {'error': 'User not found'}, 404
-        return {
-            'id': user.id, 
-            'first_name': user.first_name, 
-            'last_name': user.last_name, 
-            'email': user.email
-            }, 200
+        return user_dict, 200
 
     @api.doc('update_user')
-    @api.expect(user_input_model, validate=True)
+    @api.expect(user_input_model)
     @api.marshal_with(user_details_model)
     @api.response(404, 'User not found')
     @api.response(400, 'Invalid input data')
@@ -86,9 +95,20 @@ class UserResource(Resource):
         """
         user_data = api.payload
 
-        updated_user = facade.update_user(user_id, user_data)
+        email = user_data.get('email')
+        first_name = user_data.get('first_name')
+        last_name = user_data.get('last_name')
 
-        if not updated_user:
+        if not email:
+            return {"error": "Invalid input data"}, 400
+        if not email_regex.match(email):
+            return {"error": "Invalid input data"}, 400
+        if not first_name or not last_name:
+            return {"error": "Invalid input data"}, 400
+
+        updated_user_dict = facade.update_user(user_id, user_data)
+
+        if not updated_user_dict:
             api.abort(404, f"User {user_id} not found")
             
-        return updated_user, 200
+        return updated_user_dict, 200

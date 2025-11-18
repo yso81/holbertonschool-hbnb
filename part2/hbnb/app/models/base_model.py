@@ -25,3 +25,14 @@ class BaseModel:
             if hasattr(self, key):
                 setattr(self, key, value)
         self.save()
+    
+    def to_dict(self):
+        """
+        Returns a dictionary containing all attributes of the instance
+        """
+
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
