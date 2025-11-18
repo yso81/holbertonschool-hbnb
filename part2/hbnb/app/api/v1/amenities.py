@@ -1,4 +1,4 @@
-from flask_restx import Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields, abort
 from app.services import facade
 from flask import request
 
@@ -14,7 +14,7 @@ amenity_model = api.model('Amenity', {
 
 # Model for creating a new amenity
 amenity_create_model = api.model('AmenityCreate', {
-    'name': fields.String(required=True, description='Name of the amenity')
+    'name': fields.String(required=True, description='Name of the amenity', min_length=1)
 })
 
 
@@ -24,9 +24,18 @@ class AmenityList(Resource):
     @api.marshal_with(amenity_model, code=201)
     @api.response(201, 'Amenity successfully created')
     @api.response(400, 'Invalid input data')
+    @api.response(409, 'Amenity with this name already exists')
     def post(self):
         """Register a new amenity"""
-        data = request.get_json()
+        data = api.payload
+
+        name = data.get('name')
+        if not name or not isinstance(name, str) or len(name.strip()) == 0:
+            api.abort(400, "Amenity name cannot be empty or invalid.")
+        
+        if facade.get_amenity_by_name(name): # Assuming facade has this method
+            api.abort(409, f"Amenity with name '{name}' already exists.")
+        
         try:
             new_amenity = facade.create_amenity(data)
             return new_amenity, 201
@@ -41,12 +50,19 @@ class AmenityList(Resource):
         return amenities, 200
 
 @api.route('/<amenity_id>')
+@api.param('amenity_id', 'The unique identifier of the amenity')
 class AmenityResource(Resource):
     @api.marshal_with(amenity_model)
     @api.response(200, 'Amenity details retrieved successfully')
+    @api.response(400, 'Invalid amenity ID format')
     @api.response(404, 'Amenity not found')
     def get(self, amenity_id):
-        """Get amenity details by ID"""
+        """
+        Get amenity details by ID
+        """
+        if not amenity_id or not isinstance(amenity_id, str) or len(amenity_id.strip()) == 0:
+            api.abort(400, "Amenity ID cannot be empty or invalid.")
+        
         amenity = facade.get_amenity(amenity_id)
         if not amenity:
             api.abort(404, f"Amenity with ID '{amenity_id}' not found")
@@ -57,9 +73,23 @@ class AmenityResource(Resource):
     @api.response(200, 'Amenity updated successfully')
     @api.response(404, 'Amenity not found')
     @api.response(400, 'Invalid input data')
+    @api.response(409, 'Amenity with this name already exists')
     def put(self, amenity_id):
-        """Update an amenity's information"""
-        data = request.get_json()
+        """
+        Update an amenity's information
+        """
+        if not amenity_id or not isinstance(amenity_id, str) or len(amenity_id.strip()) == 0:
+            api.abort(400, "Amenity ID cannot be empty or invalid.")
+        
+        data = api.payload
+        name = data.get('name')
+        if not name or not isinstance(name, str) or len(name.strip()) == 0:
+            api.abort(400, "Amenity name cannot be empty or invalid.")
+        
+        existing_amenity_with_same_name = facade.get_amenity_by_name(name)
+        if existing_amenity_with_same_name and existing_amenity_with_same_name['id'] != amenity_id:
+            api.abort(409, f"Another amenity with name '{name}' already exists.")
+        
         try:
             updated_amenity = facade.update_amenity(amenity_id, data)
             if not updated_amenity:

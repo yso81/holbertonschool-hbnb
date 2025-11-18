@@ -37,6 +37,9 @@ class UserList(Resource):
         first_name_filter = args.get('first_name')
 
         if first_name_filter:
+            if not isinstance(first_name_filter, str) or len(first_name_filter.strip()) == 0:
+                api.abort(400, "Invalid first name filter provided.")
+
             return facade.find_users_by_name(first_name_filter)
         else:
             return facade.get_all_users()
@@ -55,12 +58,16 @@ class UserList(Resource):
         first_name = user_data.get('first_name')
         last_name = user_data.get('last_name')
 
-        if not email:
-            return {"error": "Invalid input data"}, 400
+        if not email or not isinstance(email, str) or len(email.strip()) == 0:
+            api.abort(400, "Invalid or missing 'email'.")
         if not email_regex.match(email):
-            return {"error": "Invalid input data"}, 400
-        if not first_name or not last_name:
-            return {"error": "Invalid input data"}, 400
+            api.abort(400, "Invalid email format.")
+
+        if not first_name or not isinstance(first_name, str) or len(first_name.strip()) == 0:
+            api.abort(400, "Invalid or missing 'first_name'. Must be a non-empty string")
+        
+        if not last_name or not isinstance(first_name, str) or len(last_name.strip()) == 0:
+            api.abort(400, "Invalid or missing 'last_name'. Must be a non-empty string")
 
         if facade.get_user_by_email(user_data['email']):
             api.abort(409, f"User with email '{user_data['email']}' already exists")
@@ -79,6 +86,9 @@ class UserResource(Resource):
         """
         Get user details by ID
         """
+        if not user_id or not isinstance(user_id, str) or len(user_id.strip()) == 0:
+            api.abort(400, "Invalid user ID provided.")
+
         user_dict = facade.get_user(user_id)
         if not user_dict:
             return {'error': 'User not found'}, 404
@@ -99,12 +109,16 @@ class UserResource(Resource):
         first_name = user_data.get('first_name')
         last_name = user_data.get('last_name')
 
-        if not email:
-            return {"error": "Invalid input data"}, 400
+        if not email or not isinstance(email, str) or len(email.strip()) == 0:
+            api.abort(400, "Invalid or missing 'email'.")
         if not email_regex.match(email):
-            return {"error": "Invalid input data"}, 400
-        if not first_name or not last_name:
-            return {"error": "Invalid input data"}, 400
+            api.abort(400, "Invalid email format.")
+
+        if not first_name or not isinstance(first_name, str) or len(first_name.strip()) == 0:
+            api.abort(400, "Invalid or missing 'first_name'. Must be a non-empty string")
+        
+        if not last_name or not isinstance(first_name, str) or len(last_name.strip()) == 0:
+            api.abort(400, "Invalid or missing 'last_name'. Must be a non-empty string")
 
         updated_user_dict = facade.update_user(user_id, user_data)
 

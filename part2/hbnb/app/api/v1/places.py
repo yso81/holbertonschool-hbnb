@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 import sys
 import os
-from flask_restx import Namespace, Resource, fields
+import re
+from flask_restx import Namespace, Resource, fields, abort
 from app.api.v1.users import user_details_model
 from app.api.v1.amenities import amenity_model
 
@@ -11,20 +12,22 @@ from app.services import facade
 
 api = Namespace('places', description='Place operations')
 
+UUID_REGEX = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+
 
 # This model is for creating/updating a place
 place_input_model = api.model('PlaceInput', {
-    'name': fields.String(required=True, description='Name of the place'),
-    'description': fields.String(required=True, description='Description of the place'),
-    'address': fields.String(required=True, description='Address of the place'),
-    'city_id': fields.String(required=True, description='City ID'),
-    'latitude': fields.Float(required=True, description='Latitude of the place'),
-    'longitude': fields.Float(required=True, description='Longitude of the place'),
-    'user_id': fields.String(required=True, description='The owner\'s user ID'),
-    'number_of_rooms': fields.Integer(required=True, description='Number of rooms'),
-    'bathrooms': fields.Integer(required=True, description='Number of bathrooms'),
-    'price': fields.Float(required=True, description='Price per night'),
-    'max_guests': fields.Integer(required=True, description='Maximum number of guests'),
+    'name': fields.String(required=True, description='Name of the place', min_length=1),
+    'description': fields.String(required=True, description='Description of the place', min_length=1),
+    'address': fields.String(required=True, description='Address of the place', min_length=1),
+    'city_id': fields.String(required=True, description='City ID', pattern=UUID_REGEX.pattern),
+    'latitude': fields.Float(required=True, description='Latitude of the place', min=-90.0, max=90.0),
+    'longitude': fields.Float(required=True, description='Longitude of the place', min=-180.0, max=180.0),
+    'user_id': fields.String(required=True, description='The owner\'s user ID', pattern=UUID_REGEX.pattern),
+    'number_of_rooms': fields.Integer(required=True, description='Number of rooms', min=1),
+    'bathrooms': fields.Integer(required=True, description='Number of bathrooms', min=0),
+    'price': fields.Float(required=True, description='Price per night', min=0.01),
+    'max_guests': fields.Integer(required=True, description='Maximum number of guests', min=1),
     'amenity_ids': fields.List(fields.String, description='List of amenity IDs')
 })
 
@@ -48,25 +51,47 @@ class PlaceList(Resource):
     @api.doc('create_place')
     @api.expect(place_input_model, validate=True)
     @api.marshal_with(place_details_model, code=201)
+    @api.response(400, 'Invalid input data')
+    @api.response(404, 'Related resource not found (User, City, or Amenity)')
     def post(self):
-        """Create a new place"""
+        """
+        Create a new place
+        """
+        place_data = api.payload
+
+        if not facade.get_user(place_data['user_id']):
+            api.abort(404, f"User with ID '{place_data['user_id']}' not found. Cannot create place.")
+        
+        if not facade.get_city(place_data['city_id']): # Assuming a facade.get_city method
+            api.abort(404, f"City with ID '{place_data['city_id']}' not found. Cannot create place.")
+        
+        if place_data.get('amenity_ids'):
+            for amenity_id in place_data['amenity_ids']:
+                if not facade.get_amenity(amenity_id): # Assuming a facade.get_amenity method
+                    api.abort(404, f"Amenity with ID '{amenity_id}' not found. Cannot create place.")
+        
         try:
-            place_data = api.payload
             new_place = facade.create_place(place_data)
             return new_place, 201
         except ValueError as e:
             api.abort(400, str(e))
 
 
-@api.route('/<place_id>')
+@api.route('/<string:place_id>')
 @api.param('place_id', 'The place identifier')
 class PlaceResource(Resource):
     
     @api.doc('get_place_details')
     @api.marshal_with(place_details_model)
+    @api.response(400, 'Invalid place ID format')
     @api.response(404, 'Place not found')
     def get(self, place_id):
-        """Get place details by ID"""
+        """
+        Get place details by ID
+        """
+        if not UUID_REGEX.match(place_id):
+            api.abort(400, "Invalid place ID format. Must be a UUID.")
+
         place = facade.get_place(place_id)
         if not place:
             api.abort(404, f"Place with ID '{place_id}' not found")
@@ -77,9 +102,28 @@ class PlaceResource(Resource):
     @api.marshal_with(place_details_model)
     @api.response(404, 'Place not found')
     def put(self, place_id):
-        """Update a place's details"""
+        """
+        Update a place's details
+        """
+        if not UUID_REGEX.match(place_id):
+            api.abort(400, "Invalid place ID format. Must be a UUID.")
+        
+        update_data = api.payload
+
+        if 'user_id' in update_data and not facade.get_user(update_data['user_id']):
+            api.abort(404, f"User with ID '{update_data['user_id']}' not found. Cannot update place.")
+        
+        if 'city_id' in update_data and not facade.get_city(update_data['city_id']): # Assuming a facade.get_city method
+            api.abort(404, f"City with ID '{update_data['city_id']}' not found. Cannot update place.")
+        
+        if 'amenity_ids' in update_data and update_data['amenity_ids'] is not None: # Ensure it's not explicitly null
+            for amenity_id in update_data['amenity_ids']:
+                if not UUID_REGEX.match(amenity_id): # Validate individual amenity ID format
+                    api.abort(400, f"Invalid amenity ID format: '{amenity_id}'. Must be a UUID.")
+                if not facade.get_amenity(amenity_id): # Assuming a facade.get_amenity method
+                    api.abort(404, f"Amenity with ID '{amenity_id}' not found. Cannot update place.")
+
         try:
-            update_data = api.payload
             updated_place = facade.update_place(place_id, update_data)
             if not updated_place:
                 api.abort(404, f"Place with ID '{place_id}' not found")
