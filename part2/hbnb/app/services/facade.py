@@ -13,6 +13,7 @@ from app.services.place_service import PlaceService
 from app.services.review_service import ReviewService
 from app.services.amenity_service import AmenityService
 from uuid import UUID
+from datetime import datetime
 
 
 class HBnBFacade:
@@ -122,6 +123,9 @@ class HBnBFacade:
         if not name or not name.strip():
             raise ValueError("Name is required")
 
+        if self.amenity_repo.get_by_attribute("name", name.strip()):
+            raise ValueError(f"An amenity with the name '{name.strip()}' already exists.")
+
         new_amenity = Amenity(name=name.strip())
         self.amenity_repo.save(new_amenity)
         return new_amenity
@@ -140,6 +144,13 @@ class HBnBFacade:
 
         return self.amenity_repo.get(amenity_id)
 
+    def get_amenity_by_name(self, name: str):
+        """
+        Retrieves an amenity by its name using the repository's get_by_attribute.
+        This is the method the API endpoint was trying to call.
+        """
+        return self.amenity_repo.get_by_attribute("name", name)
+    
     def get_all_amenities(self):
         """
         Get all amenities.
@@ -165,6 +176,11 @@ class HBnBFacade:
         if not name or not name.strip():
             raise ValueError("Name is required")
 
+        if amenity.name != name.strip():
+            existing_amenity_with_same_name = self.amenity_repo.get_by_attribute("name", name.strip())
+            if existing_amenity_with_same_name and existing_amenity_with_same_name.id != amenity_id:
+                raise ValueError(f"An amenity with the name '{name.strip()}' already exists.")
+
         amenity.name = name.strip()
         self.amenity_repo.save(amenity)
         return amenity
@@ -181,13 +197,24 @@ class HBnBFacade:
             for amenity_id in place_data['amenity_ids']:
                 if not self.amenity_repo.get(amenity_id):
                     raise ValueError(f"Amenity with ID '{amenity_id}' not found.")
-    
-        if not (0 <= float(place_data['price'])):
+
+        try:
+            price = float(place_data['price'])
+            latitude = float(place_data['latitude'])
+            longitude = float(place_data['longitude'])
+        except (ValueError, TypeError):
+            raise ValueError("Price, latitude, and longitude must be valid numbers.")
+        
+        if not (0 <= price):
             raise ValueError("Price must be a non-negative number.")
-        if not (-90 <= float(place_data['latitude']) <= 90):
+        if not (-90 <= latitude <= 90):
             raise ValueError("Latitude must be between -90 and 90.")
-        if not (-180 <= float(place_data['longitude']) <= 180):
+        if not (-180 <= longitude <= 180):
             raise ValueError("Longitude must be between -180 and 180.")
+
+        place_data['price'] = price
+        place_data['latitude'] = latitude
+        place_data['longitude'] = longitude
 
         new_place = Place(**place_data)
         self.place_repo.add(new_place)
@@ -198,6 +225,10 @@ class HBnBFacade:
 
     def get_place(self, place_id):
         """Retrieves a single place by its ID."""
+        try:
+            UUID(place_id)
+        except ValueError:
+            return None
         return self.place_repo.get(place_id)
     
     def get_all_places(self):
@@ -212,24 +243,50 @@ class HBnBFacade:
         if not place_to_update:
             return None
 
-        if 'price' in update_data and not (0 <= float(update_data['price'])):
-            raise ValueError("Price must be a non-negative number.")
+        if 'price' in update_data:
+            try:
+                price = float(update_data['price'])
+                if not (0 <= price):
+                    raise ValueError("Price must be a non-negative number.")
+                update_data['price'] = price
+            except (ValueError, TypeError):
+                raise ValueError("Price must be a valid number.")
+        
+        if 'latitude' in update_data:
+            try:
+                latitude = float(update_data['latitude'])
+                if not (-90 <= latitude <= 90):
+                    raise ValueError("Latitude must be between -90 and 90.")
+                update_data['latitude'] = latitude
+            except (ValueError, TypeError):
+                raise ValueError("Latitude must be a valid number.")
+        
+        if 'longitude' in update_data:
+            try:
+                longitude = float(update_data['longitude'])
+                if not (-180 <= longitude <= 180):
+                    raise ValueError("Longitude must be between -180 and 180.")
+                update_data['longitude'] = longitude
+            except (ValueError, TypeError):
+                raise ValueError("Longitude must be a valid number.")
         
         for key, value in update_data.items():
-            setattr(place_to_update, key, value)
+            if hasattr(place_to_update, key):
+                setattr(place_to_update, key, value)
         
         place_to_update.updated_at = datetime.now()
 
         self.place_repo.save(place_to_update)
         return place_to_update
 
-    def create_review(self, review_data):
+    def create_review(self, place_id: str, review_data: dict):
         """
         Creates a new review after validating entities
         
         Args:
+            place_id (str): The ID of the place to review (from URL).
             review_data (dict): Data for the new review. Must include
-            'user_id', 'place_id', 'rating', and 'comment'
+            'user_id', 'rating', and 'comment'
         
         Returns:
             Review: The newly created review object
@@ -237,57 +294,71 @@ class HBnBFacade:
         Raises:
             ValueError: If user or place is not found, or rating is invalid
         """
-        if not self.user_repo.get(review_data['user_id']):
+        user = self.user_repo.get(review_data['user_id'])
+        if not user:
             raise ValueError(f"User with ID '{review_data['user_id']}' not found.")
-        if not self.place_repo.get(review_data['place_id']):
-            raise ValueError(f"Place with ID '{review_data['place_id']}' not found.")
+
+        try:
+            UUID(place_id)
+        except ValueError:
+            raise ValueError(f"Invalid place ID format. Must be a UUID.")
+
+        place = self.place_repo.get(place_id)
+        if not place:
+            raise ValueError(f"Place with ID '{place_id}' not found.")
         
         rating = review_data.get('rating')
-        if not (1 <= int(rating) <= 5):
+        try:
+            rating = int(rating)
+            if not (1 <= rating <= 5):
+                raise ValueError("Rating must be an integer between 1 and 5.")
+            review_data['rating'] = rating
+        except (ValueError, TypeError):
             raise ValueError("Rating must be an integer between 1 and 5.")
+        
+        review_data['place_id'] = place_id
+        
+        if self.get_review_by_user_and_place(review_data['user_id'], place_id):
+            raise ValueError(f"User '{review_data['user_id']}' has already reviewed place '{place_id}'.")
+
 
         new_review = Review(**review_data)
         self.review_repo.add(new_review)
         return new_review
 
+    def get_review_by_user_and_place(self, user_id: str, place_id: str):
+        """
+        Retrieves a review by a specific user for a specific place.
+        Returns the Review object if found, otherwise None.
+        """
+        all_reviews = self.review_repo.get_all()
+        for review in all_reviews:
+            if review.user_id == user_id and review.place_id == place_id:
+                return review
+        return None
+
     def get_review(self, review_id):
         """Retrieves a single review by its ID."""
+        try:
+            UUID(review_id)
+        except ValueError:
+            return None
         return self.review_repo.get(review_id)
     
     def get_reviews_for_place(self, place_id):
         """Retrieves all reviews for a specific place."""
+        try:
+            UUID(place_id)
+        except ValueError:
+            raise ValueError(f"Invalid place ID format. Must be a UUID.")
         if not self.place_repo.get(place_id):
             raise ValueError(f"Place with ID '{place_id}' not found.")
-        return self.review_repo.get_by_attribute('place_id', place_id)
+        
+        all_reviews = self.review_repo.get_all()
+        return [r for r in all_reviews if r.place_id == place_id]
 
     def update_review(self, review_id, update_data):
-        """
-        Updates an existing review
-        
-        Args:
-            review_id (str): The ID of the review to update
-            update_data (dict): A dictionary with the new 'rating' or 'comment'
-            
-        Returns:
-            Review: The updated review object, or None if not found
-        
-        Raises:
-            ValueError: If the rating is invalid
-        """
-        review_to_update = self.get_review(review_id)
-        if not review_to_update:
-            return None
-
-        if 'rating' in update_data:
-            rating = update_data['rating']
-            if not (1 <= int(rating) <= 5):
-                raise ValueError("Rating must be an integer between 1 and 5.")
-            review_to_update.rating = rating
-
-        if 'comment' in update_data:
-            review_to_update.comment = update_data['comment']
-        
-        review_to_update.updated_at = datetime.now()
+        review_to_update.updated_at = datetime.now() 
         self.review_repo.save(review_to_update)
         return review_to_update
 

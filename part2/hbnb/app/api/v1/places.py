@@ -73,7 +73,7 @@ class PlaceList(Resource):
             api.abort(400, str(e))
 
 
-@api.route('/<string:place_id>')
+@api.route('/<place_id>')
 @api.param('place_id', 'The place identifier')
 class PlaceResource(Resource):
     

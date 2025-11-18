@@ -31,7 +31,7 @@ review_update_model = api.model('ReviewUpdate', {
 })
 
 
-@api.route('/places/<string:place_id>/reviews')
+@api.route('/places/<place_id>/reviews')
 @api.param('place_id', 'The ID of the place being reviewed')
 class ReviewList(Resource):
     """
@@ -49,8 +49,7 @@ class ReviewList(Resource):
         if not UUID_REGEX.match(place_id):
             api.abort(400, "Invalid place ID format. Must be a UUID.")
 
-        # Validate place_id existence (optional, if you want to abort if place doesn't exist)
-        if not facade.get_place(place_id): # Assuming facade has a get_place method
+        if not facade.get_place(place_id):
             api.abort(404, f"Place with ID '{place_id}' not found.")
 
         try:
@@ -73,13 +72,13 @@ class ReviewList(Resource):
             api.abort(400, "Invalid place ID format. Must be a UUID.")
 
         data = api.payload
-        data['place_id'] = place_id  # Add place_id from URL to the data
+        data['place_id'] = place_id
         
         user_id = data.get('user_id')
-        if not facade.get_user(user_id): # Assuming facade has a get_user method
+        if not facade.get_user(user_id):
             api.abort(404, f"User with ID '{user_id}' not found.")
         
-        if not facade.get_place(place_id): # Assuming facade has a get_place method
+        if not facade.get_place(place_id):
             api.abort(404, f"Place with ID '{place_id}' not found.")
         
         if facade.get_review_by_user_and_place(user_id, place_id): 
@@ -91,8 +90,7 @@ class ReviewList(Resource):
         except ValueError as e:
             api.abort(400, str(e))
 
-
-@api.route('/reviews/<string:review_id>')
+@api.route('/reviews/<review_id>')
 @api.param('review_id', 'The review identifier')
 @api.response(400, 'Invalid review ID format')
 @api.response(404, 'Review not found')

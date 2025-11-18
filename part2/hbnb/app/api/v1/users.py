@@ -76,7 +76,7 @@ class UserList(Resource):
         new_user_dict = facade.create_user(user_data)
         return new_user_dict, 201
 
-@api.route('/<string:user_id>')
+@api.route('/<user_id>')
 @api.param('user_id', 'The user identifier')
 class UserResource(Resource):
     @api.doc('get_user_details')
