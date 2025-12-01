@@ -1,34 +1,34 @@
 #!/usr/bin/python3
 """
-Module for the User class.
+Module for the User class
 """
-from app.models.base_model import BaseModel
+from app import db
 from app.extensions import bcrypt
-
+from app.models.base_model import BaseModel
 
 class User(BaseModel):
     """
     User class that inherits from BaseModel
-    Defines attributes for a user
     """
-    first_name = ""
-    last_name = ""
-    email = ""
-    password = ""
-    is_admin = False
+    __tablename__ = 'users'
+
+    email = db.Column(db.String(120), nullable=False, unique=True)
+    password = db.Column(db.String(128), nullable=False)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
 
     def __init__(self, *args, **kwargs):
         """
         Initializes a new User
+        Calls the BaseModel init and hashes the password if provided
         """
-        super().__init__()
-
-        if kwargs:
-            for key, value in kwargs.items():
-                if key == "password":
-                    self.hash_password(value)
-                else:
-                    setattr(self, key, value)
+        raw_password = kwargs.pop('password', None)
+        
+        super().__init__(*args, **kwargs)
+        
+        if raw_password:
+            self.hash_password(raw_password)
 
     def hash_password(self, password):
         """
@@ -55,7 +55,6 @@ class User(BaseModel):
             "is_admin": self.is_admin,
         })
 
-        # Ensure password is strictly removed from the output dictionary
         if "password" in obj_dict:
             del obj_dict["password"]
 

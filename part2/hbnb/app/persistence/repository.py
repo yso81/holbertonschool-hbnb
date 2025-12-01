@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from abc import ABC, abstractmethod
-from app.extensions import db
+from app import db
 from sqlalchemy.exc import IntegrityError
 
 class Repository(ABC):

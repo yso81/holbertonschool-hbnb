@@ -35,7 +35,7 @@ class HBnBFacade:
         
         user = User(**user_data)
         self.user_repo.add(user)
-        return user.to_dict()
+        return user
 
     def get_user(self, user_id):
         return self.user_repo.get(user_id)
@@ -46,20 +46,17 @@ class HBnBFacade:
     def find_users_by_name(self, first_name):
         """Searches users by first name (case-insensitive)"""
         all_users = self.user_repo.get_all()
-        # Handle object or dict access depending on repo type
         results = []
         for user in all_users:
-            u_name = user.first_name if hasattr(user, 'first_name') else user.get('first_name')
-            if u_name and u_name.lower() == first_name.lower():
-                results.append(user.to_dict())
+            if user.first_name and user.first_name.lower() == first_name.lower():
+                results.append(user)
         return results
 
     def get_all_users(self):
-        return [user.to_dict() for user in self.user_repo.get_all()]
+        return self.user_repo.get_all()
 
     def update_user(self, user_id, data):
-        updated_user = self.user_repo.update(user_id, data)
-        return updated_user.to_dict() if updated_user else None
+        return self.user_repo.update(user_id, data)
 
     # AMENITY METHODS
 
@@ -79,7 +76,6 @@ class HBnBFacade:
         return self.amenity_repo.get(amenity_id)
 
     def get_amenity_by_name(self, name):
-        """Retrieve amenity by name to check duplicates"""
         return self.amenity_repo.get_by_attribute("name", name)
 
     def get_all_amenities(self):
@@ -95,7 +91,6 @@ class HBnBFacade:
         if not user_id or not self.user_repo.get(user_id):
             raise ValueError(f"Owner with ID '{user_id}' not found.")
 
-        # Extract amenities before creating the Place object
         amenity_ids = place_data.pop('amenity_ids', [])
         
         try:
@@ -107,7 +102,6 @@ class HBnBFacade:
 
         new_place = Place(**place_data)
         
-        # Link Amenities
         if amenity_ids:
             for am_id in amenity_ids:
                 amenity = self.amenity_repo.get(am_id)
@@ -127,16 +121,11 @@ class HBnBFacade:
         return self.place_repo.update(place_id, update_data)
     
     def delete_place(self, place_id):
-        """Deletes a place by ID"""
         return self.place_repo.delete(place_id)
 
     # REVIEW METHODS
 
     def create_review(self, review_data):
-        """
-        Creates a review.
-        Expects review_data to contain 'place_id' and 'user_id'.
-        """
         user_id = review_data.get('user_id')
         place_id = review_data.get('place_id')
 
@@ -146,13 +135,9 @@ class HBnBFacade:
         if not self.place_repo.get(place_id):
             raise ValueError("Place not found")
 
-        # Check if user already reviewed this place
         all_reviews = self.review_repo.get_all()
         for r in all_reviews:
-            r_uid = r.user_id if hasattr(r, 'user_id') else r.get('user_id')
-            r_pid = r.place_id if hasattr(r, 'place_id') else r.get('place_id')
-            
-            if str(r_uid) == str(user_id) and str(r_pid) == str(place_id):
+            if str(r.user_id) == str(user_id) and str(r.place_id) == str(place_id):
                 raise ValueError("User has already reviewed this place")
 
         new_review = Review(**review_data)
@@ -164,7 +149,6 @@ class HBnBFacade:
 
     def get_reviews_for_place(self, place_id):
         all_reviews = self.review_repo.get_all()
-        # Filter manually
         return [r for r in all_reviews if str(r.place_id) == str(place_id)]
 
     def update_review(self, review_id, update_data):
