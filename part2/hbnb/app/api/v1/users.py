@@ -14,16 +14,21 @@ api = Namespace('users', description='User operations')
 email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 UUID_REGEX = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
 
-# Define the user model for input validation and documentation
-user_input_model = api.model('User', {
+
+user_base_model = api.model('UserBase', {
     'first_name': fields.String(required=True, description='First name of the user'),
     'last_name': fields.String(required=True, description='Last name of the user'),
     'email': fields.String(required=True, description='Email of the user')
 })
 
-user_details_model = api.inherit('UserDetails', user_input_model, {
+user_create_model = api.inherit('UserCreate', user_base_model, {
+    'password': fields.String(required=True, description='Password for the user account')
+})
+
+user_details_model = api.inherit('UserResponse', user_base_model, {
     'id': fields.String(readonly=True, description='The user unique identifier')
 })
+
 
 parser = reqparse.RequestParser()
 parser.add_argument('first_name', type=str, help='Filter users by first name')
@@ -31,7 +36,7 @@ parser.add_argument('first_name', type=str, help='Filter users by first name')
 @api.route('/')
 class UserList(Resource):
     @api.doc('list_users')
-    @api.marshal_list_with(user_input_model)
+    @api.marshal_list_with(user_details_model)
     def get(self):
         """List all users"""
         args = parser.parse_args()
@@ -46,7 +51,7 @@ class UserList(Resource):
             return facade.get_all_users()
 
     @api.doc('create_user')
-    @api.expect(user_input_model)
+    @api.expect(user_create_model)
     @api.marshal_with(user_details_model, code=201)
     @api.response(201, 'User successfully created')
     @api.response(409, 'Email already registered')
@@ -58,6 +63,7 @@ class UserList(Resource):
         email = user_data.get('email')
         first_name = user_data.get('first_name')
         last_name = user_data.get('last_name')
+        password = user_data.get('password')
 
         if not email or not isinstance(email, str) or len(email.strip()) == 0:
             api.abort(400, "Invalid or missing 'email'.")
@@ -67,13 +73,18 @@ class UserList(Resource):
         if not first_name or not isinstance(first_name, str) or len(first_name.strip()) == 0:
             api.abort(400, "Invalid or missing 'first_name'. Must be a non-empty string")
         
-        if not last_name or not isinstance(first_name, str) or len(last_name.strip()) == 0:
+        if not last_name or not isinstance(last_name, str) or len(last_name.strip()) == 0:
             api.abort(400, "Invalid or missing 'last_name'. Must be a non-empty string")
+
+        if not password or not isinstance(password, str) or len(password.strip()) == 0:
+            api.abort(400, "Invalid or missing 'password'. Must be a non-empty string")
 
         if facade.get_user_by_email(user_data['email']):
             api.abort(409, f"User with email '{user_data['email']}' already exists")
 
+
         new_user_dict = facade.create_user(user_data)
+        
         return new_user_dict, 201
 
 @api.route('/<user_id>')
@@ -96,7 +107,7 @@ class UserResource(Resource):
         return user
 
     @api.doc('update_user')
-    @api.expect(user_input_model)
+    @api.expect(user_base_model)
     @api.marshal_with(user_details_model)
     @api.response(404, 'User not found')
     @api.response(400, 'Invalid input data')
@@ -118,7 +129,7 @@ class UserResource(Resource):
         if not first_name or not isinstance(first_name, str) or len(first_name.strip()) == 0:
             api.abort(400, "Invalid or missing 'first_name'. Must be a non-empty string")
         
-        if not last_name or not isinstance(first_name, str) or len(last_name.strip()) == 0:
+        if not last_name or not isinstance(last_name, str) or len(last_name.strip()) == 0:
             api.abort(400, "Invalid or missing 'last_name'. Must be a non-empty string")
 
         updated_user_dict = facade.update_user(user_id, user_data)
