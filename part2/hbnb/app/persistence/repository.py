@@ -1,9 +1,16 @@
 #!/usr/bin/python3
+"""
+Repository pattern implementation
+"""
 from abc import ABC, abstractmethod
 from app import db
 from sqlalchemy.exc import IntegrityError
+from app.models.user import User
 
 class Repository(ABC):
+    """
+    Abstract Base Class for Repositories
+    """
     @abstractmethod
     def add(self, obj):
         pass
@@ -62,7 +69,8 @@ class InMemoryRepository(Repository):
 
 class SQLAlchemyRepository(Repository):
     """
-    Database storage using SQLAlchemy
+    Database storage using SQLAlchemy.
+    This works as a generic repository for any model.
     """
     def __init__(self, model):
         self.model = model
@@ -88,7 +96,8 @@ class SQLAlchemyRepository(Repository):
         obj = self.get(obj_id)
         if obj:
             for key, value in data.items():
-                if hasattr(obj, key):
+                # Prevent updating ID or restricted fields
+                if hasattr(obj, key) and key != 'id':
                     setattr(obj, key, value)
             db.session.commit()
         return obj
@@ -101,3 +110,19 @@ class SQLAlchemyRepository(Repository):
 
     def get_by_attribute(self, attr_name, attr_value):
         return self.model.query.filter(getattr(self.model, attr_name) == attr_value).first()
+
+
+class UserRepository(SQLAlchemyRepository):
+    """
+    Specific repository for Users.
+    Inherits generic logic from SQLAlchemyRepository but sets the User model
+    and adds user-specific queries.
+    """
+    def __init__(self):
+        super().__init__(User)
+
+    def get_by_email(self, email):
+        """
+        Specific method to find a user by email
+        """
+        return self.get_by_attribute('email', email)

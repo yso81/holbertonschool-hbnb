@@ -18,12 +18,14 @@ hbnb/
 │   │       ├── places.py
 │   │       ├── reviews.py
 │   │       ├── amenities.py
+│   │       ├── auth.py
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── user.py
 │   │   ├── place.py
 │   │   ├── review.py
 │   │   ├── amenity.py
+│   │   ├── base_model.py
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── facade.py
@@ -38,6 +40,7 @@ hbnb/
 ├── config.py
 ├── requirements.txt
 ├── README.md
+├── setup_admin.py
 ├── test_amenity.py
 ├── test_place.py
 ├── test_review.py

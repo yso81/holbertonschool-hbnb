@@ -9,12 +9,10 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 sys.path.insert(0, project_root)
 from app.services import facade
 
-
 api = Namespace('users', description='User operations')
 
 email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 UUID_REGEX = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
-
 
 user_base_model = api.model('UserBase', {
     'first_name': fields.String(required=True, description='First name of the user'),
@@ -29,9 +27,10 @@ user_create_model = api.inherit('UserCreate', user_base_model, {
 
 user_details_model = api.inherit('UserResponse', user_base_model, {
     'id': fields.String(readonly=True, description='The user unique identifier'),
-    'is_admin': fields.Boolean(readonly=True, description='Admin status')
+    'is_admin': fields.Boolean(readonly=True, description='Admin status'),
+    'created_at': fields.String(readonly=True, description='Creation timestamp'),
+    'updated_at': fields.String(readonly=True, description='Update timestamp'),
 })
-
 
 parser = reqparse.RequestParser()
 parser.add_argument('first_name', type=str, help='Filter users by first name')
@@ -54,20 +53,14 @@ class UserList(Resource):
         else:
             return facade.get_all_users()
 
-    @api.doc('create_user', security='Bearer Auth')
+    @api.doc('create_user') 
     @api.expect(user_create_model)
     @api.marshal_with(user_details_model, code=201)
     @api.response(201, 'User successfully created')
-    @api.response(403, 'Admin privileges required')
     @api.response(409, 'Email already registered')
     @api.response(400, 'Invalid input data')
-    @jwt_required()
     def post(self):
-        """Register a new user(Admin only)"""
-
-        claims = get_jwt()
-        if not claims.get('is_admin'):
-            api.abort(403, "Admin privileges required to create users manually.")
+        """Register a new user"""
 
         user_data = api.payload
 
@@ -93,10 +86,11 @@ class UserList(Resource):
         if facade.get_user_by_email(user_data['email']):
             api.abort(409, f"User with email '{user_data['email']}' already exists")
 
-
-        new_user_dict = facade.create_user(user_data)
-        
-        return new_user_dict, 201
+        try:
+            new_user = facade.create_user(user_data)
+            return new_user, 201
+        except ValueError as e:
+            api.abort(400, str(e))
 
 @api.route('/<user_id>')
 @api.param('user_id', 'The user identifier')
@@ -164,9 +158,9 @@ class UserResource(Resource):
         if user_with_email and user_with_email.id != user_id:
             api.abort(400, f"Email '{email}' is already in use by another account.")
 
-        updated_user_dict = facade.update_user(user_id, user_data)
+        updated_user = facade.update_user(user_id, user_data)
 
-        if not updated_user_dict:
+        if not updated_user:
             api.abort(404, f"User {user_id} not found")
             
-        return updated_user_dict, 200
+        return updated_user, 200

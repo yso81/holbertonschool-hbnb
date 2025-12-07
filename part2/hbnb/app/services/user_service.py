@@ -1,16 +1,19 @@
 #!/usr/bin/python3
-"""
-This module defines the UserService class.
-"""
+from app.persistence import user_repository
+from app.models.user import User
 
 class UserService:
-    """
-    The UserService class will handle the business logic for users
-    CRUD
-    """
+    def create_user(self, data):
+        # Create the user object
+        user = User(**data)
+        
+        # Use the repository to add it to the DB
+        user_repository.add(user)
+        return user
 
-    def __init__(self):
-        """
-        Initializes the UserService
-        """
-        print("UserService initialized")
+    def get_user(self, user_id):
+        # Use the repository to fetch the user
+        return user_repository.get(user_id)
+        
+    def get_user_by_email(self, email):
+        return user_repository.get_by_attribute('email', email)

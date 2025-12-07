@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import os
-from app.persistence.repository import InMemoryRepository, SQLAlchemyRepository
+from app.persistence.repository import InMemoryRepository, SQLAlchemyRepository, UserRepository
 from app.models.user import User
 from app.models.amenity import Amenity
 from app.models.place import Place
@@ -13,11 +13,14 @@ class HBnBFacade:
         """
         # Check environment variable to determine storage type
         if os.getenv('USE_DATABASE') == 'True':
-            self.user_repo = SQLAlchemyRepository(User)
+            # Use the specific UserRepository for Users
+            self.user_repo = UserRepository()
+            # Use the generic SQLAlchemyRepository for other models
             self.place_repo = SQLAlchemyRepository(Place)
             self.review_repo = SQLAlchemyRepository(Review)
             self.amenity_repo = SQLAlchemyRepository(Amenity)
         else:
+            # Use InMemoryRepository for development/testing
             self.user_repo = InMemoryRepository()
             self.place_repo = InMemoryRepository()
             self.review_repo = InMemoryRepository()
@@ -30,7 +33,13 @@ class HBnBFacade:
         if not user_data.get('email') or not user_data.get('password'):
             raise ValueError("Email and password are required")
 
-        if self.user_repo.get_by_attribute('email', user_data['email']):
+        # Using in-memory
+        if hasattr(self.user_repo, 'get_by_email'):
+             existing_user = self.user_repo.get_by_email(user_data['email'])
+        else:
+             existing_user = self.user_repo.get_by_attribute('email', user_data['email'])
+
+        if existing_user:
             raise ValueError("Email already registered")
         
         user = User(**user_data)
@@ -41,6 +50,12 @@ class HBnBFacade:
         return self.user_repo.get(user_id)
 
     def get_user_by_email(self, email):
+        """
+        Fetch user by email using the specific repository method if in DB mode.
+        """
+        if hasattr(self.user_repo, 'get_by_email'):
+            return self.user_repo.get_by_email(email)
+        
         return self.user_repo.get_by_attribute('email', email)
     
     def find_users_by_name(self, first_name):
