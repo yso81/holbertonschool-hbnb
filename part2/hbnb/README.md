@@ -132,7 +132,7 @@ The endpoints handle CRUD operations (Create, Read, Update) for amenities, while
 
 ## Database Diagrams ##
 **ER diagram**
-```
+<pre class="mermaid">
 erDiagram
     %% USER TABLE
     User {
@@ -199,7 +199,7 @@ erDiagram
     %% Broken down into two One-to-Many relationships via the Join Table
     Place ||--o{ Place_Amenity : "has"
     Amenity ||--o{ Place_Amenity : "included in"
-    ```
+</pre>
 
 !(images/ERdiagram.png)
 ![ER diagram](part2/hbnb/images/ERdiagram.png)
