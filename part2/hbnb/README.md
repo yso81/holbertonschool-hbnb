@@ -36,6 +36,10 @@ hbnb/
 │   ├── persistence/
 │       ├── __init__.py
 │       ├── repository.py
+├── sql/
+│   ├── hbnb_schema.sql
+│   ├── hbnb_data.sql
+│   └── hbnb_test.sql
 ├── run.py
 ├── config.py
 ├── requirements.txt

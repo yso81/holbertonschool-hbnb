@@ -2,57 +2,78 @@
 """
 Module for the Place class
 """
-from .base_model import BaseModel
+from app import db
+from app.models.base_model import BaseModel
 
+# Table for the Many-to-Many relationship between Place and Amenity
+place_amenity = db.Table('place_amenity',
+    db.Column('place_id', db.String(36), db.ForeignKey('places.id'), primary_key=True),
+    db.Column('amenity_id', db.String(36), db.ForeignKey('amenities.id'), primary_key=True)
+)
 
 class Place(BaseModel):
     """
     Represents a place available for booking.
-
-    Attributes:
-        city_id (str): The ID of the city where the place is located
-        user_id (str): The ID of the user who owns the place
-        name (str): The name of the place
-        description (str): A description of the place
-        number_rooms (int): The number of rooms in the place.
-        number_bathrooms (int): The number of bathrooms in the place
-        max_guest (int): The maximum number of guests the place can accommodate
-        price_by_night (int): The price per night for the place
-        latitude (float): The latitude of the place's location
-        longitude (float): The longitude of the place's location
-        owner (User): The User object who owns the place
-        reviews (list): A list of Review instances for the place
-        amenities (list): A list of Amenity instances for the place
     """
-    city_id = ""
-    user_id = ""
-    name = ""
-    description = ""
-    number_rooms = 0
-    number_bathrooms = 0
-    max_guest = 0
-    price_by_night = 0
-    latitude = 0.0
-    longitude = 0.0
-    amenity_ids = []
-    reviews = []
-    title = []
-    price = []
+    __tablename__ = 'places'
+
+    # Foreign Keys
+    city_id = db.Column(db.String(36), db.ForeignKey('cities.id'), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+
+    # Place Attributes
+    name = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.String(1024), nullable=True)
+    number_rooms = db.Column(db.Integer, default=0, nullable=False)
+    number_bathrooms = db.Column(db.Integer, default=0, nullable=False)
+    max_guest = db.Column(db.Integer, default=0, nullable=False)
+    price_by_night = db.Column(db.Integer, default=0, nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+
+    # Cascade delete
+    reviews = db.relationship('Review', backref='place', cascade='all, delete-orphan', lazy=True)
     
+    # Many-to-Many relationship with Amenity
+    amenities = db.relationship('Amenity', secondary=place_amenity, viewonly=False, backref='places')
+
     def __init__(self, *args, **kwargs):
-        #Initializes a new Place
-        super().__init__()
-        if kwargs:
-            for key, value in kwargs.items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
+        """
+        Initializes a new Place
+        """
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        """
+        Returns a dictionary representation of the Place instance
+        """
+        obj_dict = super().to_dict()
+        obj_dict.update({
+            "city_id": self.city_id,
+            "user_id": self.user_id,
+            "name": self.name,
+            "description": self.description,
+            "number_rooms": self.number_rooms,
+            "number_bathrooms": self.number_bathrooms,
+            "max_guest": self.max_guest,
+            "price_by_night": self.price_by_night,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+        })
+        return obj_dict
+
 
     def add_review(self, review):
-        #Add a review to the place
+        """
+        Add a review to the place.
+        With SQLAlchemy, we can simply append to the relationship list.
+        """
         if review not in self.reviews:
             self.reviews.append(review)
 
     def add_amenity(self, amenity):
-        #Add an amenity to the place
+        """
+        Add an amenity to the place.
+        """
         if amenity not in self.amenities:
             self.amenities.append(amenity)
