@@ -130,3 +130,73 @@ The API endpoints needed for managing users in the HBnB application. The impleme
 ## Implement the Amenity Endpoints ##
 The endpoints handle CRUD operations (Create, Read, Update) for amenities, while ensuring integration with the Business Logic layer via the Facade pattern.
 
+## Database Diagrams ##
+**ER diagram**
+```
+erDiagram
+    %% USER TABLE
+    User {
+        CHAR(36) id PK "UUID"
+        VARCHAR(255) email UK "Unique"
+        VARCHAR(255) password
+        VARCHAR(255) first_name
+        VARCHAR(255) last_name
+        BOOLEAN is_admin "Default FALSE"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    %% PLACE TABLE
+    Place {
+        CHAR(36) id PK "UUID"
+        VARCHAR(255) title
+        TEXT description
+        DECIMAL price "Precision 10,2"
+        FLOAT latitude
+        FLOAT longitude
+        CHAR(36) owner_id FK "Ref: User.id"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    %% REVIEW TABLE
+    Review {
+        CHAR(36) id PK "UUID"
+        TEXT text
+        INT rating "Check: 1-5"
+        CHAR(36) user_id FK "Ref: User.id"
+        CHAR(36) place_id FK "Ref: Place.id"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    %% AMENITY TABLE
+    Amenity {
+        CHAR(36) id PK "UUID"
+        VARCHAR(255) name UK "Unique"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    %% PLACE_AMENITY (ASSOCIATION TABLE)
+    Place_Amenity {
+        CHAR(36) place_id PK,FK
+        CHAR(36) amenity_id PK,FK
+    }
+
+    %% RELATIONSHIPS
+    
+    %% A User can own many Places (1 to Many)
+    User ||--o{ Place : "owns"
+
+    %% A User can write many Reviews (1 to Many)
+    User ||--o{ Review : "writes"
+
+    %% A Place can have many Reviews (1 to Many)
+    Place ||--o{ Review : "receives"
+
+    %% Many-to-Many Relationship between Place and Amenity
+    %% Broken down into two One-to-Many relationships via the Join Table
+    Place ||--o{ Place_Amenity : "has"
+    Amenity ||--o{ Place_Amenity : "included in"
+    ```
