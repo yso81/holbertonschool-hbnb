@@ -201,5 +201,4 @@ erDiagram
     Amenity ||--o{ Place_Amenity : "included in"
 </pre>
 
-!(images/ERdiagram.png)
-![ER diagram](part2/hbnb/images/ERdiagram.png)
+![ER diagram](images/ERdiagram.png)
