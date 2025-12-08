@@ -200,3 +200,6 @@ erDiagram
     Place ||--o{ Place_Amenity : "has"
     Amenity ||--o{ Place_Amenity : "included in"
     ```
+
+!(images/ERdiagram.png)
+![ER diagram](part2/hbnb/images/ERdiagram.png)
