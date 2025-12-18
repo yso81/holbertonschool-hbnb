@@ -39,7 +39,7 @@ parser.add_argument('first_name', type=str, help='Filter users by first name')
 class UserList(Resource):
     @api.doc('list_users', security='Bearer Auth')
     @api.marshal_list_with(user_details_model)
-    @jwt_required()
+    # @jwt_required()
     def get(self):
         """List all users"""
         args = parser.parse_args()
@@ -99,7 +99,7 @@ class UserResource(Resource):
     @api.marshal_with(user_details_model)
     @api.response(200, 'User details retrieved successfully')
     @api.response(404, 'User not found')
-    @jwt_required()
+    # @jwt_required()
     def get(self, user_id):
         """
         Get user details by ID

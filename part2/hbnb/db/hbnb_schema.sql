@@ -25,15 +25,20 @@ CREATE TABLE users (
 -- 2. PLACE TABLE --
 CREATE TABLE places (
     id CHAR(36) PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    price DECIMAL(10, 2) DEFAULT 0.00,
+    address VARCHAR(255),
+    city_name VARCHAR(255),
+    number_rooms INT DEFAULT 0,
+    number_bathrooms INT DEFAULT 0,
+    max_guest INT DEFAULT 0,
+    price_by_night INT DEFAULT 0,
     latitude FLOAT,
     longitude FLOAT,
-    owner_id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_place_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_place_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- 3. REVIEW TABLE --

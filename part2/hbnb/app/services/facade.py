@@ -55,8 +55,6 @@ class HBnBFacade:
     def find_users_by_name(self, first_name):
         """
         Searches users by first name (case-insensitive).
-        Note: Ideally, this should be moved to UserRepository as a specific query
-        to avoid fetching all users into memory.
         """
         all_users = self.user_repo.get_all()
         results = []
@@ -175,6 +173,7 @@ class HBnBFacade:
         if not self.place_repo.get(place_id):
             raise ValueError("Place not found")
 
+        # Check for duplicate review
         if hasattr(self.review_repo, 'get_by_place'):
             place_reviews = self.review_repo.get_by_place(place_id)
             for r in place_reviews:
@@ -195,12 +194,26 @@ class HBnBFacade:
         return self.review_repo.get(review_id)
 
     def get_reviews_for_place(self, place_id):
-        """Get reviews for a specific place"""
+        """
+        Get reviews for a specific place.
+        Uses specialized repo method if available, else filters all.
+        """
         if hasattr(self.review_repo, 'get_by_place'):
              return self.review_repo.get_by_place(place_id)
         
         all_reviews = self.review_repo.get_all()
         return [r for r in all_reviews if str(r.place_id) == str(place_id)]
+
+    def get_reviews_by_place(self, place_id):
+        """
+        Get all reviews for a specific place.
+        Alias for get_reviews_for_place to ensure API compatibility.
+        """
+        return self.get_reviews_for_place(place_id)
+
+    def get_all_reviews(self):
+        """Get all reviews"""
+        return self.review_repo.get_all()
 
     def update_review(self, review_id, update_data):
         """Update review"""

@@ -6,6 +6,7 @@ from flask_restx import Namespace, Resource, fields, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.api.v1.users import user_details_model
 from app.api.v1.amenities import amenity_model
+from app.api.v1.reviews import review_model
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, project_root)
@@ -15,25 +16,27 @@ api = Namespace('places', description='Place operations')
 
 UUID_REGEX = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
 
-# MODELS
+# --- MODELS ---
 
 place_input_model = api.model('PlaceInput', {
     'name': fields.String(required=True, description='Name of the place', min_length=1),
     'description': fields.String(required=True, description='Description of the place', min_length=1),
     'address': fields.String(required=True, description='Address of the place', min_length=1),
+    'city_name': fields.String(required=True, description='Name of the city'), 
     'latitude': fields.Float(required=True, description='Latitude of the place', min=-90.0, max=90.0),
     'longitude': fields.Float(required=True, description='Longitude of the place', min=-180.0, max=180.0),
-    'number_of_rooms': fields.Integer(required=True, description='Number of rooms', min=1),
-    'bathrooms': fields.Integer(required=True, description='Number of bathrooms', min=0),
-    'price': fields.Float(required=True, description='Price per night', min=0.01),
-    'max_guests': fields.Integer(required=True, description='Maximum number of guests', min=1),
+    'number_of_rooms': fields.Integer(required=True, attribute='number_rooms', description='Number of rooms', min=1),
+    'bathrooms': fields.Integer(required=True, attribute='number_bathrooms', description='Number of bathrooms', min=0),
+    'price': fields.Float(required=True, attribute='price_by_night', description='Price per night', min=0.01),
+    'max_guests': fields.Integer(required=True, attribute='max_guest', description='Maximum number of guests', min=1),
     'amenity_ids': fields.List(fields.String, description='List of amenity IDs')
 })
 
 place_details_model = api.inherit('PlaceDetails', place_input_model, {
     'id': fields.String(readonly=True, description='The place unique identifier'),
-    'owner_id': fields.String(readonly=True, description='The owner ID'),
-    'owner': fields.Nested(user_details_model, description='Owner details'),
+    'owner_id': fields.String(readonly=True, attribute='user_id', description='The Owner ID'),
+    'city_id': fields.String(readonly=True, description='The City ID'), # <--- ADDED THIS
+    'owner': fields.Nested(user_details_model, attribute='user', description='Owner details'),
     'amenities': fields.List(fields.Nested(amenity_model), description='List of amenities')
 })
 
@@ -52,7 +55,7 @@ class PlaceList(Resource):
     @api.marshal_with(place_details_model, code=201)
     @api.response(400, 'Invalid input data')
     @api.response(401, 'Unauthorized')
-    @api.response(404, 'Related resource not found (Amenity)')
+    @api.response(404, 'Related resource not found (Amenity or City)')
     @jwt_required()
     def post(self):
         """
@@ -61,7 +64,23 @@ class PlaceList(Resource):
         current_user_id = get_jwt_identity()
         place_data = api.payload
 
-        place_data['user_id'] = current_user_id
+        if place_data.get('city_id'):
+            if hasattr(facade, 'get_city') and not facade.get_city(place_data['city_id']):
+                api.abort(404, f"City with ID '{place_data['city_id']}' not found.")
+
+        creation_data = {
+            'name': place_data['name'],
+            'description': place_data['description'],
+            'address': place_data.get('address'),
+            'city_id': place_data.get('city_id'),
+            'price_by_night': place_data['price'],
+            'number_rooms': place_data['number_of_rooms'],
+            'number_bathrooms': place_data['bathrooms'],
+            'max_guest': place_data['max_guests'],
+            'latitude': place_data['latitude'],
+            'longitude': place_data['longitude'],
+            'user_id': current_user_id
+        }
 
         if place_data.get('amenity_ids'):
             for amenity_id in place_data['amenity_ids']:
@@ -69,7 +88,14 @@ class PlaceList(Resource):
                     api.abort(404, f"Amenity with ID '{amenity_id}' not found. Cannot create place.")
         
         try:
-            new_place = facade.create_place(place_data)
+            new_place = facade.create_place(creation_data)
+            
+            if place_data.get('amenity_ids'):
+                for amenity_id in place_data['amenity_ids']:
+                    amenity = facade.get_amenity(amenity_id)
+                    if amenity:
+                        new_place.add_amenity(amenity)
+
             return new_place, 201
         except ValueError as e:
             api.abort(400, str(e))
@@ -159,11 +185,6 @@ class PlaceResource(Resource):
         if str(place_owner_id) != str(current_user_id) and not is_admin:
             api.abort(403, "You are not authorized to delete this place.")
 
-        # Ensure delete_place exists in your facade, otherwise use facade.place_repo.delete(place_id)
-        # facade.delete_place(place_id) 
-        # Since I haven't seen delete_place in your facade, I'll access the repo directly or assume it exists.
-        # Ideally, add `def delete_place(self, place_id): self.place_repo.delete(place_id)` to your facade.
-        
         if hasattr(facade, 'delete_place'):
              facade.delete_place(place_id)
         elif hasattr(facade, 'place_repo'):
@@ -172,3 +193,34 @@ class PlaceResource(Resource):
              api.abort(500, "Server configuration error: cannot delete place.")
 
         return '', 204
+
+
+@api.route('/<place_id>/amenities')
+class PlaceAmenities(Resource):
+    @api.doc('get_place_amenities')
+    @api.marshal_list_with(amenity_model)
+    @api.response(404, 'Place not found')
+    def get(self, place_id):
+        """Get all amenities for a specific place"""
+        place = facade.get_place(place_id)
+        if not place:
+            api.abort(404, "Place not found")
+        
+        return place.amenities
+
+
+@api.route('/<place_id>/reviews')
+class PlaceReviews(Resource):
+    @api.doc('get_place_reviews')
+    @api.marshal_list_with(review_model)
+    @api.response(404, 'Place not found')
+    def get(self, place_id):
+        """Get all reviews for a specific place"""
+        place = facade.get_place(place_id)
+        if not place:
+            api.abort(404, "Place not found")
+            
+        all_reviews = facade.get_all_reviews()
+        place_reviews = [r for r in all_reviews if r.place_id == place_id]
+        
+        return place_reviews

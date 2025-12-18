@@ -18,18 +18,22 @@ class Place(BaseModel):
     __tablename__ = 'places'
 
     # Foreign Keys
-    city_id = db.Column(db.String(36), db.ForeignKey('cities.id'), nullable=False)
+    # city_id = db.Column(db.String(36), db.ForeignKey('cities.id'), nullable=False)
     user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
 
     # Place Attributes
     name = db.Column(db.String(128), nullable=False)
     description = db.Column(db.String(1024), nullable=True)
+    address = db.Column(db.String(255), nullable=True)
+    city_name = db.Column(db.String(128), nullable=True)
     number_rooms = db.Column(db.Integer, default=0, nullable=False)
     number_bathrooms = db.Column(db.Integer, default=0, nullable=False)
     max_guest = db.Column(db.Integer, default=0, nullable=False)
     price_by_night = db.Column(db.Integer, default=0, nullable=False)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
+    user = db.relationship('User', backref='places')
+    
 
     # Cascade delete
     reviews = db.relationship('Review', backref='place', cascade='all, delete-orphan', lazy=True)
@@ -49,16 +53,18 @@ class Place(BaseModel):
         """
         obj_dict = super().to_dict()
         obj_dict.update({
-            "city_id": self.city_id,
+            "city_name": self.city_name,
             "user_id": self.user_id,
             "name": self.name,
             "description": self.description,
+            "address": self.address,
             "number_rooms": self.number_rooms,
             "number_bathrooms": self.number_bathrooms,
             "max_guest": self.max_guest,
             "price_by_night": self.price_by_night,
             "latitude": self.latitude,
             "longitude": self.longitude,
+            "amenities": [amenity.to_dict() for amenity in self.amenities]
         })
         return obj_dict
 

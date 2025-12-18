@@ -8,7 +8,6 @@ from app.models.base_model import BaseModel
 class Amenity(BaseModel):
     """
     Represents an amenity that can be associated with a place.
-    Examples: 'Wifi', 'Parking', 'Pool'.
     """
     __tablename__ = 'amenities'
 
